@@ -1,0 +1,311 @@
+name: LLM Performance Benchmark Suite
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+        type: boolean
+      platforms:
+        description: 'Platforms to benchmark (comma-separated)'
+        required: false
+        default: 'your_platform,openrouter'
+        type: string
+      models:
+        description: 'Models to test (comma-separated)'
+        required: false
+        default: 'openai/gpt-oss-120b'
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+  GUIDELLM_VERSION: 'latest'
+
+jobs:
+  benchmark:
+    name: Run Performance Benchmarks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install guidellm matplotlib pandas numpy jinja2
+
+      - name: Create results directories
+        run: |
+          mkdir -p results/{html,csv,json}
+          mkdir -p reports/$(date +%Y-%m-%d)
+
+      - name: Verify Python environment
+        run: |
+          python --version
+          pip list | grep guidellm || echo "guidellm not found"
+
+      - name: Run benchmark for your platform
+        env:
+          PLATFORM_API_BASE_URL: ${{ secrets.PLATFORM_API_BASE_URL }}
+          PLATFORM_API_KEY: ${{ secrets.PLATFORM_API_KEY }}
+          DEBUG: ${{ github.event.inputs.debug || 'false' }}
+        run: |
+          if [[ -z "$PLATFORM_API_BASE_URL" || -z "$PLATFORM_API_KEY" ]]; then
+            echo "⚠️ Platform credentials not configured, skipping platform benchmark"
+            echo "To enable, set PLATFORM_API_BASE_URL and PLATFORM_API_KEY secrets"
+            exit 0
+          fi
+
+          echo "🚀 Running benchmark for your platform..."
+          export GUIDELLM__OPENAI__BASE_URL="$PLATFORM_API_BASE_URL"
+          export GUIDELLM__OPENAI__API_KEY="$PLATFORM_API_KEY"
+          export OPENAI_API_KEY="$PLATFORM_API_KEY"
+
+          if [[ "$DEBUG" == "true" ]]; then
+            export GUIDELLM__LOGGING__CONSOLE_LOG_LEVEL="DEBUG"
+            export GUIDELLM__LOGGING__LOG_FILE="debug_platform.log"
+          else
+            export GUIDELLM__LOGGING__CONSOLE_LOG_LEVEL="INFO"
+          fi
+
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          OUTPUT_DIR="results/platform_$TIMESTAMP"
+          mkdir -p "$OUTPUT_DIR"
+
+          python scripts/verify_connection.py || {
+            echo "❌ Connection verification failed for platform"
+            exit 1
+          }
+
+          guidellm benchmark run \
+            --target "$PLATFORM_API_BASE_URL" \
+            --processor "openai/gpt-oss-120b" \
+            --model "openai/gpt-oss-120b" \
+            --data "prompt_tokens=1000,output_tokens=800,samples=100" \
+            --max-requests 100 \
+            --profile constant \
+            --rate 1 \
+            --output-dir "$OUTPUT_DIR" \
+            --outputs json --outputs csv --outputs html \
+            --backend-kwargs '{"validate_backend": false}' || {
+            echo "❌ Platform benchmark failed"
+            exit 1
+          }
+
+          # Copy results to standardized locations
+          cp "$OUTPUT_DIR"/*.json results/csv/platform_$(date +%Y%m%d).json 2>/dev/null || true
+          cp "$OUTPUT_DIR"/*.csv results/csv/platform_$(date +%Y%m%d).csv 2>/dev/null || true
+          cp "$OUTPUT_DIR"/*.html results/html/platform_$(date +%Y%m%d).html 2>/dev/null || true
+
+          echo "✅ Platform benchmark completed"
+
+      - name: Run benchmark for OpenRouter
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          DEBUG: ${{ github.event.inputs.debug || 'false' }}
+        run: |
+          if [[ -z "$OPENROUTER_API_KEY" ]]; then
+            echo "⚠️ OpenRouter API key not configured, skipping OpenRouter benchmark"
+            echo "To enable, set OPENROUTER_API_KEY secret"
+            exit 0
+          fi
+
+          echo "🚀 Running benchmark for OpenRouter..."
+          export GUIDELLM__OPENAI__BASE_URL="https://openrouter.ai/api/v1"
+          export GUIDELLM__OPENAI__API_KEY="$OPENROUTER_API_KEY"
+          export OPENAI_API_KEY="$OPENROUTER_API_KEY"
+
+          if [[ "$DEBUG" == "true" ]]; then
+            export GUIDELLM__LOGGING__CONSOLE_LOG_LEVEL="DEBUG"
+            export GUIDELLM__LOGGING__LOG_FILE="debug_openrouter.log"
+          else
+            export GUIDELLM__LOGGING__CONSOLE_LOG_LEVEL="INFO"
+          fi
+
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          OUTPUT_DIR="results/openrouter_$TIMESTAMP"
+          mkdir -p "$OUTPUT_DIR"
+
+          python scripts/verify_connection.py || {
+            echo "❌ Connection verification failed for OpenRouter"
+            exit 1
+          }
+
+          guidellm benchmark run \
+            --target "https://openrouter.ai/api/v1" \
+            --processor "openai/gpt-4o" \
+            --model "openai/gpt-4o" \
+            --data "prompt_tokens=1000,output_tokens=800,samples=100" \
+            --max-requests 100 \
+            --profile constant \
+            --rate 1 \
+            --output-dir "$OUTPUT_DIR" \
+            --outputs json --outputs csv --outputs html \
+            --backend-kwargs '{"validate_backend": false}' || {
+            echo "❌ OpenRouter benchmark failed"
+            exit 1
+          }
+
+          # Copy results to standardized locations
+          cp "$OUTPUT_DIR"/*.json results/csv/openrouter_$(date +%Y%m%d).json 2>/dev/null || true
+          cp "$OUTPUT_DIR"/*.csv results/csv/openrouter_$(date +%Y%m%d).csv 2>/dev/null || true
+          cp "$OUTPUT_DIR"/*.html results/html/openrouter_$(date +%Y%m%d).html 2>/dev/null || true
+
+          echo "✅ OpenRouter benchmark completed"
+
+      - name: Generate comparison report
+        run: |
+          echo "📊 Generating comparison report..."
+          python scripts/generate_comparison.py \
+            --results-dir results \
+            --output results/html/comparison_$(date +%Y%m%d).html \
+            --date $(date +%Y-%m-%d) || {
+            echo "⚠️ Comparison report generation failed, continuing..."
+          }
+
+      - name: Create index page
+        run: |
+          python scripts/create_index.py \
+            --results-dir results \
+            --output results/index.html
+
+      - name: Upload results as artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: |
+            results/
+            *.log
+          retention-days: 30
+
+      - name: Commit and push results
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          # Add only new/modified result files
+          git add results/ || true
+          git add *.log || true
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Benchmark results for $(date +%Y-%m-%d)
+
+            🤖 Automated benchmark execution
+            📈 Generated performance reports
+            📊 Platform comparison analysis
+
+            🚀 Generated with [Claude Code](https://claude.com/claude-code)
+
+            Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push
+          fi
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Download results from previous job
+        uses: actions/download-artifact@v3
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: ./
+
+      - name: Prepare Pages content
+        run: |
+          # Remove old artifacts, keep recent 30 days
+          find . -name "*.html" -mtime +30 -delete
+          find . -name "*.csv" -mtime +30 -delete
+          find . -name "*.json" -mtime +30 -delete
+
+          # Ensure index.html exists
+          if [[ ! -f "index.html" ]]; then
+            echo "<h1>LLM Performance Benchmark Reports</h1><p>Reports will appear here after the first benchmark run.</p>" > index.html
+          fi
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+
+  cleanup:
+    name: Cleanup old artifacts
+    needs: [benchmark, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Delete workflow artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+
+            // Keep only the latest 5 artifacts
+            const artifactsToDelete = artifacts.data.artifacts.slice(5);
+
+            for (const artifact of artifactsToDelete) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              console.log(`Deleted artifact: ${artifact.name}`);
+            }
