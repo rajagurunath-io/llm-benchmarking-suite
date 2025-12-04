@@ -107,17 +107,19 @@ jobs:
       - name: Update main branch with index
         run: |
           git checkout main
-          # Create or update simple index.html in main branch using echo
-          echo '<!DOCTYPE html>
-<html>
-<head>
-    <meta http-equiv="refresh" content="0; url=https://rajagurunath-io.github.io/llm-benchmarking-suite/">
-    <title>Redirecting to Reports</title>
-</head>
-<body>
-    <p>Redirecting to <a href="https://rajagurunath-io.github.io/llm-benchmarking-suite/">LLM Benchmark Reports</a>...</p>
-</body>
-</html>' > index.html
+          # Create or update simple index.html in main branch
+          {
+            echo '<!DOCTYPE html>'
+            echo '<html>'
+            echo '<head>'
+            echo '    <meta http-equiv="refresh" content="0; url=https://rajagurunath-io.github.io/llm-benchmarking-suite/">'
+            echo '    <title>Redirecting to Reports</title>'
+            echo '</head>'
+            echo '<body>'
+            echo '    <p>Redirecting to <a href="https://rajagurunath-io.github.io/llm-benchmarking-suite/">LLM Benchmark Reports</a>...</p>'
+            echo '</body>'
+            echo '</html>'
+          } > index.html
           git add index.html || true
           git commit -m "Update README redirect" || true
           git push || true
