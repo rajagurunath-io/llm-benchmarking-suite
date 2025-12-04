@@ -155,7 +155,7 @@ function run_platform_benchmark() {
     fi
 
     # Run benchmark
-    guidellm benchmark run \
+    ./guidellm_patched.sh benchmark run \
         --target "$url" \
         --processor "$model" \
         --model "$model" \
