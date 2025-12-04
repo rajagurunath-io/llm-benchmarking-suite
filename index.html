@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Performance Benchmark Reports</title>
+    <title>LLM Benchmark Reports</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
             padding: 20px;
-            background: #f5f5f5;
+            background: #f8f9fa;
+            min-height: 100vh;
         }
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
             border-radius: 8px;
@@ -21,7 +22,7 @@
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
             border-bottom: 2px solid #e1e5e9;
             padding-bottom: 20px;
         }
@@ -30,72 +31,303 @@
             margin: 0;
             font-size: 2.5em;
         }
-        .reports {
-            display: grid;
-            gap: 20px;
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin: 10px 0 0 0;
         }
-        .report-card {
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .file-card {
             background: #f8f9fa;
             border-radius: 8px;
             padding: 20px;
             border-left: 4px solid #3498db;
-            transition: transform 0.2s;
-        }
-        .report-card:hover {
-            transform: translateY(-2px);
-        }
-        .btn {
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            margin: 10px 5px;
             transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
         }
-        .btn:hover {
-            background: #2980b9;
+        .file-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-left-color: #2980b9;
         }
-        .note {
+        .file-title {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-icon {
+            font-size: 1.2em;
+        }
+        .file-meta {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-size {
+            background: #e8f4f8;
+            color: #3498db;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+        .empty-state h3 {
+            margin-top: 0;
+            color: #95a5a6;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .stat {
+            text-align: center;
+            padding: 15px 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+            display: block;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e5e9;
+            color: #7f8c8d;
+        }
+        .auto-refresh {
             background: #e8f5e8;
             border: 1px solid #d4edda;
             border-radius: 8px;
             padding: 15px;
             margin: 20px 0;
             color: #155724;
+            text-align: center;
+        }
+        .refresh-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .refresh-btn:hover {
+            background: #229954;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 LLM Performance Benchmark Reports</h1>
-            <p>Sample benchmark reports for demonstration</p>
+            <h1>📊 LLM Benchmark Reports</h1>
+            <p>Daily performance testing reports and visualizations</p>
         </div>
 
-        <div class="note">
-            <strong>🔧 Setup in Progress:</strong> These are sample benchmark reports.
-            Automated benchmarks will run daily and update these reports with real performance data.
+        <div class="auto-refresh">
+            <strong>🔄 Daily Updates:</strong> Reports are automatically updated every day at 00:00 UTC
+            <button class="refresh-btn" onclick="location.reload()">Refresh</button>
         </div>
 
-        <div class="reports">
-            <div class="report-card">
-                <h3>📈 Benchmark Report</h3>
-                <p>Complete benchmark visualization with performance metrics and charts.</p>
-                <a href="benchmarks.html" class="btn">View Benchmark Report</a>
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-number" id="file-count">0</span>
+                <div class="stat-label">Total Reports</div>
+            </div>
+            <div class="stat">
+                <span class="stat-number" id="latest-count">0</span>
+                <div class="stat-label">Added Today</div>
+            </div>
+            <div class="stat">
+                <span class="stat-number" id="total-size">0 KB</span>
+                <div class="stat-label">Total Size</div>
             </div>
         </div>
 
-        <div style="text-align: center; margin-top: 30px;">
-            <a href="https://github.com/rajagurunath-io/llm-benchmarking-suite" class="btn">
-                📁 View Repository
-            </a>
-            <a href="https://github.com/rajagurunath-io/llm-benchmarking-suite/actions" class="btn">
-                ⚡ View Actions
-            </a>
+        <div id="file-list" class="file-grid">
+            <!-- Files will be populated here -->
+        </div>
+
+        <div class="footer">
+            <p>
+                © 2024 LLM Performance Benchmark Suite •
+                Reports automatically generated by guidellm
+            </p>
         </div>
     </div>
+
+    <script>
+        // List of HTML files (hardcoded for now, can be made dynamic)
+        const htmlFiles = [
+            'benchmarks.html'
+        ];
+
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // Get file type icon
+        function getFileIcon(filename) {
+            if (filename.includes('comparison')) return '📈';
+            if (filename.includes('benchmark')) return '🚀';
+            if (filename.includes('platform')) return '🏭';
+            if (filename.includes('openrouter')) return '🌐';
+            return '📄';
+        }
+
+        // Create file card
+        function createFileCard(filename, size, date) {
+            return `
+                <a href="${filename}" class="file-card" target="_blank">
+                    <div class="file-title">
+                        <span class="file-icon">${getFileIcon(filename)}</span>
+                        <span>${filename.replace('.html', '').replace(/_/g, ' ').toUpperCase()}</span>
+                    </div>
+                    <div style="color: #555; font-size: 0.9em;">Click to view report</div>
+                    <div class="file-meta">
+                        <span>${date}</span>
+                        <span class="file-size">${size}</span>
+                    </div>
+                </a>
+            `;
+        }
+
+        // Load files asynchronously
+        async function loadFiles() {
+            const fileList = document.getElementById('file-list');
+            let totalSize = 0;
+            let fileCount = 0;
+            let todayCount = 0;
+            const today = new Date().toDateString();
+
+            // Try to fetch actual files from server
+            try {
+                const response = await fetch('');
+                const html = await response.text();
+
+                // Extract HTML file links
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const links = doc.querySelectorAll('a[href$=".html"]');
+
+                const files = [];
+                links.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href && href.endsWith('.html') && href !== 'index.html') {
+                        files.push(href);
+                    }
+                });
+
+                if (files.length > 0) {
+                    for (const filename of files) {
+                        try {
+                            const fileResponse = await fetch(filename, { method: 'HEAD' });
+                            if (fileResponse.ok) {
+                                const contentLength = fileResponse.headers.get('content-length');
+                                const lastModified = fileResponse.headers.get('last-modified');
+                                const size = contentLength ? formatSize(parseInt(contentLength)) : 'Unknown';
+                                const date = lastModified ? new Date(lastModified).toLocaleDateString() : 'Unknown';
+
+                                fileList.innerHTML += createFileCard(filename, size, date);
+
+                                totalSize += contentLength ? parseInt(contentLength) : 0;
+                                fileCount++;
+                                if (new Date(lastModified).toDateString() === today) {
+                                    todayCount++;
+                                }
+                            }
+                        } catch (e) {
+                            // If we can't get file info, show the file anyway
+                            fileList.innerHTML += createFileCard(filename, 'Unknown', 'Unknown');
+                            fileCount++;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('Could not auto-detect files, using fallback');
+            }
+
+            // Fallback: use hardcoded files
+            if (fileCount === 0) {
+                for (const filename of htmlFiles) {
+                    fileList.innerHTML += createFileCard(filename, 'Unknown', new Date().toLocaleDateString());
+                    fileCount++;
+                    todayCount++; // Assume all are from today for fallback
+                    totalSize += 50000; // Estimate size
+                }
+            }
+
+            // Update stats
+            document.getElementById('file-count').textContent = fileCount;
+            document.getElementById('latest-count').textContent = todayCount;
+            document.getElementById('total-size').textContent = formatSize(totalSize);
+
+            // Show empty state if no files
+            if (fileCount === 0) {
+                fileList.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <h3>No Reports Found</h3>
+                        <p>Benchmark reports will appear here once the automated testing starts.</p>
+                        <p>Check back after the first daily run at 00:00 UTC.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-refresh every 5 minutes when page is visible
+        let refreshInterval;
+        function startAutoRefresh() {
+            refreshInterval = setInterval(() => {
+                if (!document.hidden) {
+                    loadFiles();
+                }
+            }, 300000); // 5 minutes
+        }
+
+        // Initialize
+        loadFiles();
+        startAutoRefresh();
+
+        // Pause auto-refresh when page is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(refreshInterval);
+            } else {
+                startAutoRefresh();
+            }
+        });
+    </script>
 </body>
 </html>
