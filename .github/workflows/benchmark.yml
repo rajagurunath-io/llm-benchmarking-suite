@@ -100,15 +100,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to deploy"
           else
-            git commit -m "📊 Daily benchmark update - $(date +%Y-%m-%d)
-
-🔄 Automated report generation
-📁 Updated HTML reports directory
-✨ Fresh performance data
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
+            git commit -m "📊 Daily benchmark update - $(date +%Y-%m-%d) 🔄 Automated report generation 📁 Updated HTML reports directory ✨ Fresh performance data 🤖 Generated with [Claude Code](https://claude.com/claude-code) Co-Authored-By: Claude <noreply@anthropic.com>"
             git push origin gh-pages --force
           fi
 
